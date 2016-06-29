@@ -8,11 +8,15 @@ import tweepy
 import time
 from pymongo import MongoClient
 import json
+from ConfigParser import SafeConfigParser
 
-consumer_key = 'ac1yMlhXpxDAjzJWwmzagg'
-consumer_secret= 'wpMMIXxkZ3ChqANkdVkzMH0wMdb8nKMqIVaztIEwtw'
-access_token = '2177040169-5aVazrfgCpjhDOgemcIw1PvZXb3nbHtglUuAOcf'
-access_secret = 'iCVFeVZkhSC3hsJfISbLDbpZZAyUS2Grn6ZJUNABaWmrt'
+parser = SafeConfigParser()
+parser.read('app_data.ini')
+    
+consumer_key = str(parser.get('key_and_tokens', 'consumer_key'))
+consumer_secret= str(parser.get('key_and_tokens', 'consumer_secret'))
+access_token = str(parser.get('key_and_tokens', 'access_token'))
+access_secret = str(parser.get('key_and_tokens', 'access_secret'))
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)
@@ -27,7 +31,7 @@ tweets_num = 0
 		
 client = MongoClient('localhost', 27017)
 db = client['twitter_db']
-collection = db['twitter_collection']
+collection = db['media_tweets']
 
 ## Loop for obtain the tweets from the timeline
 #

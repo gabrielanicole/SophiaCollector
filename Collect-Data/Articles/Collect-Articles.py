@@ -14,7 +14,7 @@ from BeautifulSoup import BeautifulSoup
             
 client = MongoClient('localhost', 27017)
 db = client['twitter_db']
-collection = db['twitter_collection']
+collection = db['media_tweets']
 while(1):
     ## Cursor to find the data that is available to download the article.
     #
