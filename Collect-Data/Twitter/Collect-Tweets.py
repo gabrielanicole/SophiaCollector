@@ -76,7 +76,7 @@ while(1):
 			        doc['tweet_url'] = tweet_url
 			        doc['screen_name'] = screen_name
 			        ## YYYY-MM-DDTHH:MM:SS.
-			        doc['date'] = date.isoformat()
+			        doc['date'] = date.isoformat()[:10]
 			        doc['to_download'] = 1
 			        ## The document is inserted into Local MonogDB.
 			        collection.insert(doc)
