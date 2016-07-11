@@ -52,20 +52,9 @@ while(1):
                 ## Not the best way to filter, by it works so far.
                 if extractor.getText() == '' or 'Rating is available when the video has been rented' in extractor.getText():
                     print ('No Content Available - WARNING')
-                else:
-                    ## Add data to the document
-                    #
-                    #  We make sure that there is a Title and text in the Article,
-                    #  then we add this data to the document as is coded.
-                    doc['title'] = Title
-                    doc['date'] = document['date']
-                    doc['host'] = document['screen_name']
-                    doc['url'] = document['article_url']
-                    doc['content'] = extractor.getText()
-                    doc['imageLink'] = document['image_url']
-                    if len(Title) > 50:
-                        Title = Title[:20]
-                    
+                    result = collection.update_one({"_id": document['_id']}, {"$set": {"to_download": 0}})
+                    print result.matched_count
+                else:                  
                     article_found = False
                         
                     api_articles = requests.get('http://api.sophia-project.info/articles/', auth=(user, password))
@@ -77,13 +66,15 @@ while(1):
                         for i in results:
                             api_title = i['title']
                             api_date = i['date']
-                            if api_title == Title and api_date == document['date']:
+                            api_host = i['host']
+                            if api_title == Title and api_date == document['date'] and api_host == document['screen_name']:
                                 article_found = True
                     else:
                         for i in results:
                             api_title = i['title']
                             api_date = i['date']
-                            if api_title == Title and api_date == document['date']:
+                            api_host = i['host']
+                            if api_title == Title and api_date == document['date'] and api_host == document['screen_name']:
                                 article_found = True
                         while(article_found == False and next_results != None):
                             api_articles = requests.get(next_results, auth=(user, password))
@@ -94,7 +85,8 @@ while(1):
                             for i in results:
                                 api_title = i['title']
                                 api_date = i['date']
-                                if api_title == Title and api_date == document['date']:
+                                api_host = i['host']
+                                if api_title == Title and api_date == document['date'] and api_host == document['screen_name']:
                                     article_found = True
                     if article_found == True:
                         print ('Article already exists in the DB, skipping...')
@@ -110,10 +102,32 @@ while(1):
                                     }
                         r = requests.post('http://api.sophia-project.info/articles/',  auth=(user, password), headers=headers, data=data)
                         print ('REQUEST STATUS: '+str(r.status_code))
+                        if str(r.status_code) == "201":
+                            result = collection.update_one({"_id": document['_id']}, {"$set": {"to_download": 0}})
+                            print result.matched_count
+                        else:
+                            print ("Article was not downloaded")
                 print ('--------------------------------------------------------------------')
             except AttributeError:
                 print ('THERE IS NO TITLE, THEREFORE NO ARTICLE')
                 print ('--------------------------------------------------------------------')
+            except KeyError:
+                print ('New Article, adding...')
+                content = extractor.getText()
+                content = json.dumps(content, 'utf-8')
+                data = '{"title": "'+Title+'","date": "'+document['date']+'","host": "'+document['screen_name']+'","url": "'+document['article_url']+'","content": '+content+',"imageLink": "'+document['image_url']+'"}'
+                data = data.encode('utf-8')
+                print data
+                headers = {
+                            'Content-Type': 'application/json',
+                            }
+                r = requests.post('http://api.sophia-project.info/articles/',  auth=(user, password), headers=headers, data=data)
+                print ('REQUEST STATUS: '+str(r.status_code))
+                if str(r.status_code) == "201":
+                    result = collection.update_one({"_id": document['_id']}, {"$set": {"to_download": 0}})
+                    print result.matched_count
+                else:
+                    print ("Article was not downloaded")
     else:
         ## The code enters here when there is no new articles in the local database and waits for 1 minute
         print ("CURSOR EMPTY, NO NEW ARTICLES TO DOWNLOAD")
