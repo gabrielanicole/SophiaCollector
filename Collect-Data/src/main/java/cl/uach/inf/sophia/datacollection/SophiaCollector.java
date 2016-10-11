@@ -1,12 +1,12 @@
-package cl.uach.inf.datacollection;
+package cl.uach.inf.sophia.datacollection;
 
-import cl.uach.inf.datacollection.twitter.CollectArticlesFromMongoToSophia;
-import cl.uach.inf.datacollection.twitter.CollectTweetsFromTwitterToMongo;
+import cl.uach.inf.sophia.datacollection.twitter.CollectArticlesFromMongoToSophia;
+import cl.uach.inf.sophia.datacollection.twitter.CollectTweetsFromTwitterToMongo;
 import oauth.signpost.exception.OAuthCommunicationException;
 import oauth.signpost.exception.OAuthExpectationFailedException;
 import oauth.signpost.exception.OAuthMessageSignerException;
 
-public class RunSophiaCollector {
+public class SophiaCollector {
 
 	public static void main(String[] args) throws OAuthMessageSignerException, OAuthExpectationFailedException, OAuthCommunicationException {
 		CollectTweetsFromTwitterToMongo t1 = new CollectTweetsFromTwitterToMongo("CollectDataFromTwitterToMongo-1");

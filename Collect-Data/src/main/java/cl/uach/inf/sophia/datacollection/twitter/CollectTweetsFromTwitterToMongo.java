@@ -1,4 +1,4 @@
-package cl.uach.inf.datacollection.twitter;
+package cl.uach.inf.sophia.datacollection.twitter;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -95,6 +95,7 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 			}
 			//esperar un momento antes de consultar Twitter de nuevo
 			try {
+				System.out.println("CollectTweetsFromTwitterToMongo-1-Sleep");
 				Thread.sleep(PARAM_WAITING_TIME);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
