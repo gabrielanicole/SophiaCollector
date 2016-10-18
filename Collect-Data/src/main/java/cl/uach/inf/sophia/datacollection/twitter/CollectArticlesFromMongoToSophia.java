@@ -1,26 +1,16 @@
 package cl.uach.inf.sophia.datacollection.twitter;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.Map;
 
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.auth.BasicScheme;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.bson.Document;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.mongodb.BasicDBObject;
@@ -48,26 +38,26 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final String PARAM_PASSWORD = "kelluwen";
 
 	/** Variables privadas */
-	private HttpGet requestGet;
-	private HttpPut requestPut;
-	private HttpPost requestPost;
-	private CloseableHttpClient client;
-	private CloseableHttpResponse response;
 	SimpleDateFormat dateFormatWeWant = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	SimpleDateFormat dateFormatWeHave = new SimpleDateFormat("EEE MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH);
 
+	private SophiaAPIConnector sophiaAPI;
+	private HttpClientContext httpClientContext;
 
-	public boolean alreadyExistInSophia(org.jsoup.nodes.Document article){
+	public boolean tweetHasURL(Document tweet){
+		if (tweet.get("entities")!=null){
+			if (((Document)tweet.get("entities")).get("urls")!=null){
+				if (((ArrayList<Document>) ((Document)tweet.get("entities")).get("urls")).size()>0){
+					return true;
+				}
+			}
+		}
 		return false;
 	}
 
-	/*return 0 if SophiaAPI received everything, return 1 if not*/
-	public int sendToSophiaAPI(org.jsoup.nodes.Document article, Document tweet){
-		//FIXME:For the moment, it only sends the article to SophiaAPI. It should also send the publication and check if the article already exists before.
-		/**Queries to SophiaAPI**/
-		//Call SophiaAPI/Articles
-		JSONObject jsonArticle = new JSONObject();
-		jsonArticle.put("art_url", article.location());
+	public Map<String,Object> format(org.jsoup.nodes.Document article, Document tweet){
+		Map<String,Object> map = new HashMap<String,Object>();
+		map.put("art_url", article.location());
 		String dateWeWant="1900-01-01 00:00:00";
 		try {
 			Date dateTweet = dateFormatWeHave.parse(tweet.getString("created_at"));
@@ -75,94 +65,83 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		} catch (ParseException e1) {
 			e1.printStackTrace();
 		}
-		jsonArticle.put("art_date",dateWeWant);
-		jsonArticle.put("art_title", article.title());
-		jsonArticle.put("art_content", article.select("p").text());
-		jsonArticle.put("art_image_link", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/600px-No_image_available.svg.png");
+		map.put("art_date",dateWeWant);
+		map.put("art_title", article.title());
+		map.put("art_content", article.select("p").text());
+		map.put("art_image_link", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/600px-No_image_available.svg.png");
 		Document entities = (Document)tweet.get("entities");
 		if (entities!=null){
 			if (entities.get("media")!=null){
 				ArrayList<Document> medias = (ArrayList<Document>) entities.get("media");
-				jsonArticle.put("art_image_link", medias.get(0).getString("media_url"));//---> media_url
+				map.put("art_image_link", medias.get(0).getString("media_url"));//---> media_url
 			}
 		}
-		jsonArticle.put("art_name_press_source", ((Document)tweet.get("user")).getString("screen_name"));
-		
+		map.put("art_name_press_source", ((Document)tweet.get("user")).getString("screen_name"));
+
 		ArrayList<Long> list = new ArrayList<Long>();
 		list.add(tweet.getLong("id"));
 		//jsonArticle.put("art_publications", list); //For the moment : a unique tweet ID
-		jsonArticle.put("art_category", "unclassified");
+		map.put("art_category", "unclassified");
 
-		CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-
-		try {
-			HttpPost request = new HttpPost(PARAM_SOPHIAAPI);
-			StringEntity params = new StringEntity(jsonArticle.toString());
-			request.setHeader("Accept", "application/json");
-			request.setHeader("content-type", "application/json");
-			request.setEntity(params);
-			//CloseableHttpResponse response = httpClient.execute(request);
-			System.out.println(jsonArticle);
-			// handle response here...
-			//System.out.println("response SophiaAPI"+response.getStatusLine()+EntityUtils.toString(response.getEntity()));
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		} finally {
-			try {
-				httpClient.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-		return 0;
+		return map;
 	}
 
-
 	public void run(){
-		while(true){
-			//Read the mongo database to find new entries to download and send to Sophia
-			FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
-			long numberResults=mongoCollection.count(eq("to_download", 1));
+		try {
+			while(true){
+				//Read the mongo database to find new entries to download and send to Sophia
+				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
+				long numberResults=mongoCollection.count(eq("to_download", 1));
+				if (numberResults>0){
+					//There is new articles to download
+					Iterator<Document> it = docCursor.iterator();
+					while (it.hasNext()){
+						//Take the next article to download
+						Document tweet = it.next();
+						if (tweetHasURL(tweet)){
+							try {
+								//This tweet contains URL, download it
+								ArrayList<Document> urls = (ArrayList<Document>) ((Document)tweet.get("entities")).get("urls");
+								//Scrap it con JSoup
 
-			if (numberResults>0){
-				//There is new articles to download
-				Iterator<Document> it = docCursor.iterator();
-				while (it.hasNext()){
-					//Take the next article to download
-					Document newEntry = it.next();
-					//Check if the new entry contain an URL
-					if (newEntry.get("entities")!=null){
-						if (((Document)newEntry.get("entities")).get("urls")!=null){
-							ArrayList<Document> urls = (ArrayList<Document>) ((Document)newEntry.get("entities")).get("urls");
-							if (urls.size()>0){
-								//Take the first url and download the corresponding page
-								try {
-									org.jsoup.nodes.Document article = Jsoup.connect(urls.get(0).getString("url")).get();
-									int flag = sendToSophiaAPI(article,newEntry);
-									//Article was downloaded and send to SophiaAPI successfully
-									mongoCollection.updateOne(new Document("id",newEntry.get("id")),new Document("$set", new Document("to_download", flag)));
-								} catch (IOException e) {
-									//In case there is a problem during article scraping: actualize Mongo field with -1 to indicate there is an error
-									mongoCollection.updateOne(new Document("id",newEntry.get("id")),new Document("$set", new Document("to_download", -1)));
+								org.jsoup.nodes.Document article = Jsoup.connect(urls.get(0).getString("url")).get();
+
+
+								//Check if the article already exist
+								//TODO
+								//Format it to prepare the POST to SophiaAPI
+								Map<String, Object> map = format(article,tweet);
+								int responseCode = sophiaAPI.postArticles(map);
+								if (responseCode == 200){
+									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+								}
+								else {
+									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
 								}
 							}
+							catch (Exception e){
+								System.out.println(e);
+								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+							}
+						}
+						else {
+							//This tweet does not contain URL, tell to Mongo that this tweet has been processed
+							mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
 						}
 					}
 				}
-			}
-			else {
-				//If there is no new entries, wait a moment...
-				try {
+				else {
+					//If there is no new entries, wait a moment...
+					System.out.println("CollectTweetsFromMongoToSophia-1-Sleep");
 					Thread.sleep(PARAM_WAITING_TIME);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
 				}
 			}
 		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
 	}
 
-	@SuppressWarnings("deprecation")
 	public CollectArticlesFromMongoToSophia(String name){
 		super(name);		
 		//Conexión al SGBD Mongo
@@ -171,25 +150,14 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		mongoDatabase = mongoClient.getDatabase(databaseName);
 		mongoCollection = mongoDatabase.getCollection(collectionName);
 
-		/* Creación de una consulta HTTP (metodo GET) */ 
-		requestGet = new HttpGet(PARAM_SOPHIAAPI);
-		requestGet.addHeader(BasicScheme.authenticate(
-				new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
-				"UTF-8", false));
-
-		/* Creación de una consulta HTTP (metodo Put) */ 
-		requestPut = new HttpPut(PARAM_SOPHIAAPI);
-		requestPut.addHeader(BasicScheme.authenticate(
-				new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
-				"UTF-8", false));
+		sophiaAPI = new SophiaAPIConnector();
 
 		/* Creación de una consulta HTTP (metodo Post) */ 
-		requestPost = new HttpPost(PARAM_SOPHIAAPI);
-		requestPost.addHeader(BasicScheme.authenticate(
-				new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
-				"UTF-8", false));
-
+		//requestPost = new HttpPost(PARAM_SOPHIAAPI);
+		//requestPost.addHeader(BasicScheme.authenticate(
+		//	new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
+		//	"UTF-8", false));
 		// Creación de un cliente HTTP
-		client = HttpClients.createDefault();
+		//client = HttpClients.createDefault();
 	}
 }

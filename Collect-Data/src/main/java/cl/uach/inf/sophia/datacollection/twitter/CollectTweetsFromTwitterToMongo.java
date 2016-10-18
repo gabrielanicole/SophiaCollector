@@ -27,8 +27,6 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 	final String PARAM_SECRET = "iCVFeVZkhSC3hsJfISbLDbpZZAyUS2Grn6ZJUNABaWmrt";
 	final String PARAM_CONSUMERKEY = "ac1yMlhXpxDAjzJWwmzagg";
 	final String PARAM_CONSUMERSECRET = "wpMMIXxkZ3ChqANkdVkzMH0wMdb8nKMqIVaztIEwtw";
-	final String PARAM_USERNAME = "sophia";
-	final String PARAM_PASSWORD = "kelluwen";
 	final int PARAM_WAITING_TIME=300000; //5 minutos
 	final String PARAM_TWITTERAPI_URL_TIMELINE = "https://api.twitter.com/1.1/statuses/home_timeline.json";
 	final String PARAM_NBRESULT="?count=200";
@@ -48,7 +46,6 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 	private OAuthConsumer consumer;
 
 
-	//FIXME
 	private long getLastTweetIdInMongo(){
 		if (mongoCollection.count()>0){
 			FindIterable<Document> docCursor= mongoCollection.find();
