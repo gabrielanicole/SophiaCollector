@@ -135,13 +135,15 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								//Format it to prepare the POST to SophiaAPI
 								Map<String, Object> map = format(article,tweet);
 								Map<String, Object> mapPublication = formatPublication(tweet);
-								String responsePublication = sophiaAPI.postPublications(mapPublication);
-								System.out.println(responsePublication);
+								String idNewPublication = sophiaAPI.postPublications(mapPublication);
+								System.out.println(idNewPublication);
+								map.put("art_publications", idNewPublication);
 								//Check if the article already exist
 								//TODO
 								//sophiaAPI.getExistingArticle(map)
-
+								System.out.println(map);
 								int responseCode = sophiaAPI.postArticles(map);
+								System.out.println(responseCode);
 								if (responseCode == 200){
 									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 								}
