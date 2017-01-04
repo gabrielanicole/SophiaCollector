@@ -10,6 +10,7 @@ import com.mashape.unirest.request.GetRequest;
 public class SophiaAPIConnector {
 
 	final String PARAM_SOPHIA_API_ARTICLES = "http://api.sophia-project.info/v2/articles/";
+	final String PARAM_SOPHIA_API_PUBLICATIONS = "http://localhost:8000/v2/publications/";
 
 	public void getArticles(){
 		try{
@@ -32,13 +33,28 @@ public class SophiaAPIConnector {
 			return 0;
 		}
 	}
+	
+	public int postPublications(Map<String,Object> map){
+		try{
+			HttpResponse<JsonNode> jsonResponse = Unirest.post(PARAM_SOPHIA_API_PUBLICATIONS)
+					  .header("accept", "application/json").fields(map)
+					  .asJson();
+			System.out.println(jsonResponse);
+			return jsonResponse.getStatus();
+		}
+		catch (Exception e){
+			e.printStackTrace();
+			return 0;
+		}
+	}
+
 
 
 	/********************** TEST **************************************/
 
 	public static final void main(final String[] args) throws Exception {
 		SophiaAPIConnector x = new SophiaAPIConnector();
-		x.runTest1();
+		//x.runTest1();
 	}
 	
 	private void runTest1() throws UnirestException {

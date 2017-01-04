@@ -86,6 +86,33 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		return map;
 	}
 
+	public Map<String,Object> formatPublication(Document tweet){
+		Map<String,Object> map = new HashMap<String,Object>();
+		map.put("pub_content", tweet.getString("text"));
+		String dateWeWant="1900-01-01 00:00:00";
+		try {
+			Date dateTweet = dateFormatWeHave.parse(tweet.getString("created_at"));
+			dateWeWant = dateFormatWeWant.format(dateTweet);
+		} catch (ParseException e1) {
+			e1.printStackTrace();
+		}
+		map.put("pub_date",dateWeWant);
+		//map.put("art_title", article.title());
+		//map.put("art_content", article.select("p").text());
+		//map.put("art_image_link", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/600px-No_image_available.svg.png");
+		Document entities = (Document)tweet.get("entities");
+		if (entities!=null){
+			if (entities.get("media")!=null){
+				ArrayList<Document> medias = (ArrayList<Document>) entities.get("media");
+				map.put("pub_url", medias.get(0).getString("expanded_url"));//---> media_url
+			}
+		}
+		map.put("pub_username", ((Document)tweet.get("user")).getString("screen_name"));
+		
+		return map;
+	}
+
+	
 	public void run(){
 		try {
 			while(true){
@@ -105,12 +132,15 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								//Scrap it con JSoup
 
 								org.jsoup.nodes.Document article = Jsoup.connect(urls.get(0).getString("url")).get();
-
-
-								//Check if the article already exist
-								//TODO
 								//Format it to prepare the POST to SophiaAPI
 								Map<String, Object> map = format(article,tweet);
+								Map<String, Object> mapPublication = formatPublication(tweet);
+								int responsePublication = sophiaAPI.postPublications(mapPublication);
+								System.out.println(responsePublication);
+								//Check if the article already exist
+								//TODO
+								//sophiaAPI.getExistingArticle(map)
+
 								int responseCode = sophiaAPI.postArticles(map);
 								if (responseCode == 200){
 									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
@@ -143,7 +173,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	}
 
 	public CollectArticlesFromMongoToSophia(String name){
-		super(name);		
+		super(name);
 		//Conexión al SGBD Mongo
 		mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
 		//Conexión a una collecion de una base de datos particular
@@ -152,7 +182,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 
 		sophiaAPI = new SophiaAPIConnector();
 
-		/* Creación de una consulta HTTP (metodo Post) */ 
+		/* Creación de una consulta HTTP (metodo Post) */
 		//requestPost = new HttpPost(PARAM_SOPHIAAPI);
 		//requestPost.addHeader(BasicScheme.authenticate(
 		//	new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
