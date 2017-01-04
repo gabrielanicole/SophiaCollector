@@ -135,7 +135,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								//Format it to prepare the POST to SophiaAPI
 								Map<String, Object> map = format(article,tweet);
 								Map<String, Object> mapPublication = formatPublication(tweet);
-								int responsePublication = sophiaAPI.postPublications(mapPublication);
+								String responsePublication = sophiaAPI.postPublications(mapPublication);
 								System.out.println(responsePublication);
 								//Check if the article already exist
 								//TODO
