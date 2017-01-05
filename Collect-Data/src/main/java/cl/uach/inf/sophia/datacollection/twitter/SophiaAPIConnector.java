@@ -59,6 +59,18 @@ public class SophiaAPIConnector {
 		}
 	}
 	
+	public void putPublications(Map<String, Object> map, String idPublication) {
+		try{
+			HttpResponse<JsonNode> jsonResponse = Unirest.put(PARAM_SOPHIA_API_PUBLICATIONS+idPublication+"/")
+					  .header("accept", "application/json").fields(map)
+					  .asJson();
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public String checkArticle(Map<String, Object> mapCheckArticle) {
 		try{
 			HttpResponse<JsonNode> jsonResponse = Unirest.post(PARAM_SOPHIA_API_CHECK_ARTICLE)
@@ -92,6 +104,8 @@ public class SophiaAPIConnector {
 				  .field("foo", "bar")
 				  .asJson();
 	}
+
+	
 
 	
 }

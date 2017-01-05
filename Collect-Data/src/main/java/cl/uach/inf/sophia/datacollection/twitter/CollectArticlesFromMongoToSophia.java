@@ -156,6 +156,9 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 									System.out.println(idNewArticle);
 									if (!idNewArticle.equals("error")){
 										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+										Map<String, Object> updatePublication = new HashMap<String,Object>();
+										updatePublication.put("pub_article", idNewArticle);
+										sophiaAPI.putPublications(updatePublication,idNewPublication);
 									}
 									else {
 										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
