@@ -85,6 +85,14 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 
 		return map;
 	}
+	
+	public Map<String,Object> formatCheckArticle(org.jsoup.nodes.Document article, Document tweet){
+		Map<String,Object> map = new HashMap<String,Object>();
+		map.put("art_title", article.title());
+		map.put("art_content", article.select("p").text());
+		map.put("art_name_press_source", ((Document)tweet.get("user")).getString("screen_name"));
+		return map;
+	}
 
 	public Map<String,Object> formatPublication(Document tweet){
 		Map<String,Object> map = new HashMap<String,Object>();
@@ -134,22 +142,33 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								org.jsoup.nodes.Document article = Jsoup.connect(urls.get(0).getString("url")).get();
 								//Format it to prepare the POST to SophiaAPI
 								Map<String, Object> map = format(article,tweet);
+								Map<String, Object> mapCheckArticle = formatCheckArticle(article,tweet);
 								Map<String, Object> mapPublication = formatPublication(tweet);
 								String idNewPublication = sophiaAPI.postPublications(mapPublication);
-								System.out.println(idNewPublication);
+								//System.out.println(idNewPublication);
 								map.put("art_publications", idNewPublication);
+								//System.out.print(mapCheckArticle);
 								//Check if the article already exist
+								String idArticle = sophiaAPI.checkArticle(mapCheckArticle);
+								if (idArticle.equals("is_new")){
+									//System.out.println("es un articulo nuevo");
+									String idNewArticle = sophiaAPI.postArticles(map);
+									System.out.println(idNewArticle);
+									if (!idNewArticle.equals("error")){
+										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+									}
+									else {
+										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+									}
+								}else{
+									System.out.println("NO es un articulo nuevo");
+								}
+								//System.out.println(idArticle);
 								//TODO
 								//sophiaAPI.getExistingArticle(map)
-								System.out.println(map);
-								int responseCode = sophiaAPI.postArticles(map);
-								System.out.println(responseCode);
-								if (responseCode == 200){
-									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
-								}
-								else {
-									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
-								}
+								//System.out.println(map);
+								
+								
 							}
 							catch (Exception e){
 								System.out.println(e);

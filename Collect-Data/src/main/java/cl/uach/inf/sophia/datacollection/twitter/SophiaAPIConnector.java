@@ -13,6 +13,7 @@ import com.mashape.unirest.request.GetRequest;
 public class SophiaAPIConnector {
 
 	final String PARAM_SOPHIA_API_ARTICLES = "http://localhost:8000/v2/articles/";
+	final String PARAM_SOPHIA_API_CHECK_ARTICLE = "http://localhost:8000/v2/articles/exist/";
 	final String PARAM_SOPHIA_API_PUBLICATIONS = "http://localhost:8000/v2/publications/";
 
 	public void getArticles(){
@@ -24,16 +25,20 @@ public class SophiaAPIConnector {
 		}
 	}
 
-	public int postArticles(Map<String,Object> map){
+	public String postArticles(Map<String,Object> map){
 		try{
 			HttpResponse<JsonNode> jsonResponse = Unirest.post(PARAM_SOPHIA_API_ARTICLES)
 					  .header("accept", "application/json").fields(map)
 					  .asJson();
-			return jsonResponse.getStatus();
+			JSONObject response = new JSONObject(jsonResponse.getBody());
+			JSONArray arrayResponse = response.getJSONArray("array");
+			JSONObject cleanResponse = arrayResponse.getJSONObject(0);
+			String idResponse = (String) cleanResponse.get("_id");
+			return idResponse;
 		}
 		catch (Exception e){
 			e.printStackTrace();
-			return 0;
+			return "error";
 		}
 	}
 	
@@ -53,7 +58,24 @@ public class SophiaAPIConnector {
 			return "Error";
 		}
 	}
-
+	
+	public String checkArticle(Map<String, Object> mapCheckArticle) {
+		try{
+			HttpResponse<JsonNode> jsonResponse = Unirest.post(PARAM_SOPHIA_API_CHECK_ARTICLE)
+					  .header("accept", "application/json").fields(mapCheckArticle)
+					  .asJson();
+			JSONObject response = new JSONObject(jsonResponse.getBody());
+			JSONArray arrayResponse = response.getJSONArray("array");
+			JSONObject cleanResponse = arrayResponse.getJSONObject(0);
+			String idResponse = (String) cleanResponse.get("_id");
+			//System.out.println( idResponse);
+			return idResponse;
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
 
 
 	/********************** TEST **************************************/
@@ -70,4 +92,6 @@ public class SophiaAPIConnector {
 				  .field("foo", "bar")
 				  .asJson();
 	}
+
+	
 }
