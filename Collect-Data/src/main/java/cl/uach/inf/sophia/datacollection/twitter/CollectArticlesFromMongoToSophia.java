@@ -1,5 +1,6 @@
 package cl.uach.inf.sophia.datacollection.twitter;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -11,8 +12,10 @@ import java.util.Map;
 
 import org.apache.http.client.protocol.HttpClientContext;
 import org.bson.Document;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.mashape.unirest.http.exceptions.UnirestException;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -32,10 +35,6 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final private String databaseName ="SophiaCollector";
 	final private String collectionName ="Tweets";
 	final int PARAM_WAITING_TIME=120000; //2 minutos
-	/** Parametros en relación con la fuente de datos API REST y el intervalo para conectarse **/
-	final String PARAM_SOPHIAAPI = "http://api.sophia-project.info/v2/articles/";
-	final String PARAM_USERNAME = "sophia";
-	final String PARAM_PASSWORD = "kelluwen";
 
 	/** Variables privadas */
 	SimpleDateFormat dateFormatWeWant = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -78,19 +77,8 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		}
 		map.put("art_name_press_source", ((Document)tweet.get("user")).getString("screen_name"));
 
-		ArrayList<Long> list = new ArrayList<Long>();
-		list.add(tweet.getLong("id"));
-		//jsonArticle.put("art_publications", list); //For the moment : a unique tweet ID
 		map.put("art_category", "unclassified");
 
-		return map;
-	}
-	
-	public Map<String,Object> formatCheckArticle(org.jsoup.nodes.Document article, Document tweet){
-		Map<String,Object> map = new HashMap<String,Object>();
-		map.put("art_title", article.title());
-		map.put("art_content", article.select("p").text());
-		map.put("art_name_press_source", ((Document)tweet.get("user")).getString("screen_name"));
 		return map;
 	}
 
@@ -105,82 +93,95 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 			e1.printStackTrace();
 		}
 		map.put("pub_date",dateWeWant);
-		//map.put("art_title", article.title());
-		//map.put("art_content", article.select("p").text());
-		//map.put("art_image_link", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/600px-No_image_available.svg.png");
-		Document entities = (Document)tweet.get("entities");
-		if (entities!=null){
-			if (entities.get("media")!=null){
-				ArrayList<Document> medias = (ArrayList<Document>) entities.get("media");
-				map.put("pub_url", medias.get(0).getString("expanded_url"));//---> media_url
-			}
-		}
-		map.put("pub_username", ((Document)tweet.get("user")).getString("screen_name"));
+		map.put("pub_url", "https://twitter.com/"+((Document)tweet.get("user")).getString("screen_name")+"/status/"+
+		 tweet.getString("id_str"));
 		
+		map.put("pub_username", ((Document)tweet.get("user")).getString("screen_name"));
+
 		return map;
 	}
 
-	
+	//Download and scrap an html page from a tweet containing an URL
+	public org.jsoup.nodes.Document downloadArticle(Document tweet) throws IOException{
+
+		ArrayList<Document> urls = (ArrayList<Document>) ((Document)tweet.get("entities")).get("urls");
+		//Scrap it con JSoup
+		return Jsoup.connect(urls.get(0).getString("url")).get();
+
+	}
+
 	public void run(){
 		try {
 			while(true){
-				//Read the mongo database to find new entries to download and send to Sophia
+				//Read the mongo database to find new tweets
 				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
 				long numberResults=mongoCollection.count(eq("to_download", 1));
 				if (numberResults>0){
-					//There is new articles to download
-					Iterator<Document> it = docCursor.iterator();
-					while (it.hasNext()){
-						//Take the next article to download
-						Document tweet = it.next();
+					//There is new tweets
+					Iterator<Document> itTweets = docCursor.iterator();
+					while (itTweets.hasNext()){
+						//Take the next tweet to download
+						Document tweet = itTweets.next();
+						// Check if the tweet contains an URL
 						if (tweetHasURL(tweet)){
 							try {
 								//This tweet contains URL, download it
-								ArrayList<Document> urls = (ArrayList<Document>) ((Document)tweet.get("entities")).get("urls");
-								//Scrap it con JSoup
+								org.jsoup.nodes.Document article=downloadArticle(tweet);
+								//Format the article to prepare the POST to SophiaAPI
+								Map<String, Object> mapArticle = format(article,tweet);
 
-								org.jsoup.nodes.Document article = Jsoup.connect(urls.get(0).getString("url")).get();
-								//Format it to prepare the POST to SophiaAPI
-								Map<String, Object> map = format(article,tweet);
-								Map<String, Object> mapCheckArticle = formatCheckArticle(article,tweet);
-								Map<String, Object> mapPublication = formatPublication(tweet);
-								String idNewPublication = sophiaAPI.postPublications(mapPublication);
-								//System.out.println(idNewPublication);
-								map.put("art_publications", idNewPublication);
-								//System.out.print(mapCheckArticle);
-								//Check if the article already exist
-								String idArticle = sophiaAPI.checkArticle(mapCheckArticle);
-								if (idArticle.equals("is_new")){
-									//System.out.println("es un articulo nuevo");
-									String idNewArticle = sophiaAPI.postArticles(map);
-									System.out.println(idNewArticle);
-									if (!idNewArticle.equals("error")){
-										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
-										Map<String, Object> updatePublication = new HashMap<String,Object>();
-										updatePublication.put("pub_article", idNewArticle);
-										sophiaAPI.putPublications(updatePublication,idNewPublication);
-									}
-									else {
-										mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
-									}
-								}else{
-									System.out.println("NO es un articulo nuevo");
+								/**VERIFICAR SI EL ARTICULO YA EXISTE EN SOPHIA API*/
+								JSONObject jsonResponse = sophiaAPI.hasExistingArticle(mapArticle);
+								String id = jsonResponse.getString("_id");
+
+								if (id.equals("0")){
+									/** EL ARTICULO NO EXISTE*/
+									//enviamos el nuevo articulo
+									String idNewArticle = sophiaAPI.postArticles(mapArticle);
+
+									//enviamos el nuevo tweet, formatando el tweet antes
+									Map<String, Object> mapPublication = formatPublication(tweet);
+									mapPublication.put("pub_article", idNewArticle);
+									String idNewPublication = sophiaAPI.postPublications(mapPublication);
+
+									//actualizamos el articulo con el id de la publicacion
+								/*	Map<String, Object> updateArticle = new HashMap<String,Object>();
+									ArrayList<String> listPublications = new ArrayList<String>();
+									listPublications.add(idNewPublication);
+									updateArticle.put("art_publications", listPublications);
+									sophiaAPI.putArticles(updateArticle,idNewArticle);*/
+
 								}
-								//System.out.println(idArticle);
-								//TODO
-								//sophiaAPI.getExistingArticle(map)
-								//System.out.println(map);
-								
-								
+								else {
+									/** EL ARTICULO EXISTE*/
+									//enviamos el nuevo tweet, formatando el tweet antes
+									Map<String, Object> mapPublication = formatPublication(tweet);
+									mapPublication.put("pub_article", id);
+									String idNewPublication = sophiaAPI.postPublications(mapPublication);
+
+									//Actualizamos el articulo antiguo agregando el id de la nueva publicacion
+								/*	JSONArray publicationsArray = jsonResponse.getJSONArray("art_publications");
+									Iterator<Object> publications = publicationsArray.iterator();
+									ArrayList<String> listPublications = new ArrayList<String>();
+									while (publications.hasNext()){
+										listPublications.add(publications.next().toString());
+									}
+									listPublications.add(idNewPublication);
+									Map<String, Object> updateArticle = new HashMap<String,Object>();
+									updateArticle.put("art_publications", listPublications);
+									sophiaAPI.putArticles(updateArticle,id);*/
+								}
+
+								//Informamos a Mongo que terminamos procesar este tweet
+								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 							}
-							catch (Exception e){
-								System.out.println(e);
-								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+							catch (IOException e){
+								e.printStackTrace();
 							}
 						}
 						else {
 							//This tweet does not contain URL, tell to Mongo that this tweet has been processed
-							mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+							mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 						}
 					}
 				}
@@ -190,8 +191,9 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 					Thread.sleep(PARAM_WAITING_TIME);
 				}
 			}
-		}
-		catch (Exception e){
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (UnirestException e) {
 			e.printStackTrace();
 		}
 	}
@@ -205,13 +207,5 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		mongoCollection = mongoDatabase.getCollection(collectionName);
 
 		sophiaAPI = new SophiaAPIConnector();
-
-		/* Creación de una consulta HTTP (metodo Post) */
-		//requestPost = new HttpPost(PARAM_SOPHIAAPI);
-		//requestPost.addHeader(BasicScheme.authenticate(
-		//	new UsernamePasswordCredentials(PARAM_USERNAME, PARAM_PASSWORD),
-		//	"UTF-8", false));
-		// Creación de un cliente HTTP
-		//client = HttpClients.createDefault();
 	}
 }
