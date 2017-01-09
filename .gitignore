@@ -4,8 +4,8 @@ __pycache__/
 *$py.class
 
 #proyect
-SophiaApi/.proyect
-SophiaApi/.pydevproyect
+SophiaApi/.project
+SophiaApi/.pydevproject
 
 # C extensions
 *.so
