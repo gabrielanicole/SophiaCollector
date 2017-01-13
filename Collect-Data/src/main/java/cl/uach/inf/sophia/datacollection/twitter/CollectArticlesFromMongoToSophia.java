@@ -113,12 +113,16 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	public void run(){
 		try {
 			while(true){
+				System.out.println("Bienvenido a depurar JAVA en CollectArticlesFromMongoToSophia");
 				//Read the mongo database to find new tweets
 				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
+				System.out.println(docCursor);
 				long numberResults=mongoCollection.count(eq("to_download", 1));
+				System.out.println(numberResults);
 				if (numberResults>0){
 					//There is new tweets
 					Iterator<Document> itTweets = docCursor.iterator();
+					System.out.println(itTweets);
 					while (itTweets.hasNext()){
 						//Take the next tweet to download
 						Document tweet = itTweets.next();
@@ -132,6 +136,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 
 								/**VERIFICAR SI EL ARTICULO YA EXISTE EN SOPHIA API*/
 								JSONObject jsonResponse = sophiaAPI.hasExistingArticle(mapArticle);
+								System.out.println(jsonResponse);
 								String id = jsonResponse.getString("_id");
 
 								if (id.equals("0")){

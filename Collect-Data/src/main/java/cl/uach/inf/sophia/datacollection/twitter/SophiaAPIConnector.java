@@ -12,9 +12,10 @@ import com.mashape.unirest.request.GetRequest;
 
 public class SophiaAPIConnector {
 
-	final String PARAM_SOPHIA_API_ARTICLES = "http://localhost:8000/v2/articles/";
-	final String PARAM_SOPHIA_API_CHECK_ARTICLE = "http://localhost:8000/v2/articles/exist/";
-	final String PARAM_SOPHIA_API_PUBLICATIONS = "http://localhost:8000/v2/publications/";
+	final String URL_BASE_API = "http://api.sophia-project.info/v2/";
+	final String PARAM_SOPHIA_API_ARTICLES = URL_BASE_API + "articles/";
+	final String PARAM_SOPHIA_API_CHECK_ARTICLE = URL_BASE_API + "articles/exist/";
+	final String PARAM_SOPHIA_API_PUBLICATIONS = URL_BASE_API + "publications/";
 
 	public void getArticles(){
 		GetRequest jsonResponse = Unirest.get(PARAM_SOPHIA_API_ARTICLES);
@@ -69,7 +70,6 @@ public class SophiaAPIConnector {
 		return cleanResponse;
 	}
 
-
 	/********************** TEST **************************************/
 
 	public static final void main(final String[] args) throws Exception {
@@ -84,10 +84,4 @@ public class SophiaAPIConnector {
 				.field("foo", "bar")
 				.asJson();
 	}
-
-
-
-
-
-
 }
