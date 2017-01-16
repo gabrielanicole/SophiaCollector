@@ -35,6 +35,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final private String databaseName ="SophiaCollector";
 	final private String collectionName ="Tweets";
 	final int PARAM_WAITING_TIME=120000; //2 minutos
+	final int PARAM_DOWNLOAD_AND_WAIT = 100;
 
 	/** Variables privadas */
 	SimpleDateFormat dateFormatWeWant = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -113,21 +114,28 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	public void run(){
 		try {
 			while(true){
-				System.out.println("Bienvenido a depurar JAVA en CollectArticlesFromMongoToSophia");
+				//System.out.println("Bienvenido a depurar JAVA en CollectArticlesFromMongoToSophia");
 				//Read the mongo database to find new tweets
 				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
-				System.out.println(docCursor);
+				//System.out.println(docCursor);
 				long numberResults=mongoCollection.count(eq("to_download", 1));
-				System.out.println(numberResults);
+				//System.out.println(numberResults);
 				if (numberResults>0){
 					//There is new tweets
 					Iterator<Document> itTweets = docCursor.iterator();
-					System.out.println(itTweets);
+					int counterDownload = 0;
+					//System.out.println(itTweets);
 					while (itTweets.hasNext()){
 						//Take the next tweet to download
 						Document tweet = itTweets.next();
 						// Check if the tweet contains an URL
 						if (tweetHasURL(tweet)){
+							counterDownload = counterDownload + 1;
+							if(counterDownload == PARAM_DOWNLOAD_AND_WAIT){
+								counterDownload = 0;
+								System.out.println("CollectTweetsFromMongoToSophia-1-Sleep");
+								Thread.sleep(PARAM_WAITING_TIME);
+							}
 							try {
 								//This tweet contains URL, download it
 								org.jsoup.nodes.Document article=downloadArticle(tweet);
