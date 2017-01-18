@@ -1,5 +1,7 @@
 package cl.uach.inf.sophia.datacollection.twitter;
 
+import java.math.BigInteger;
+
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -30,13 +32,15 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 	final int PARAM_WAITING_TIME=300000; //5 minutos
 	final String PARAM_TWITTERAPI_URL_TIMELINE = "https://api.twitter.com/1.1/statuses/home_timeline.json";
 	final String PARAM_NBRESULT="?count=200";
+	
+	int aux = 0;
 
 
 	/** Paremetros en relación con el uso de Mongo para almacenar temporalmente los tweets */
 	final private MongoClient mongoClient;
 	final private MongoDatabase mongoDatabase;
 	final private MongoCollection<Document> mongoCollection;
-	final private String databaseName ="SophiaCollector";
+	final private String databaseName ="SophiaCollectorNew";
 	final private String collectionName ="Tweets";
 
 	/** Variables privadas */
@@ -76,7 +80,14 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 		while(true)
 		{
 			JSONArray lastTweets = getLastTweets();
-			long lastTweetIdInMongo = getLastTweetIdInMongo();
+			long lastTweetIdInMongo;// 
+			if(aux==0){
+				lastTweetIdInMongo = 82173045042311990L;
+				//lastTweetIdInMongo = new BigInteger("9223372036854775807")
+				aux = 1;
+			}else{
+				lastTweetIdInMongo = getLastTweetIdInMongo();
+			}
 			int resultCount = lastTweets.length();
 			for (int i = 0; i < resultCount; i++)
 			{

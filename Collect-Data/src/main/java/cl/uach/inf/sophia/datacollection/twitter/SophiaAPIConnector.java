@@ -12,6 +12,7 @@ import com.mashape.unirest.request.GetRequest;
 
 public class SophiaAPIConnector {
 
+	//final String URL_BASE_API = "http://localhost:8000/v2/";
 	final String URL_BASE_API = "http://api.sophia-project.info/v2/";
 	final String PARAM_SOPHIA_API_ARTICLES = URL_BASE_API + "articles/";
 	final String PARAM_SOPHIA_API_CHECK_ARTICLE = URL_BASE_API + "articles/exist/";

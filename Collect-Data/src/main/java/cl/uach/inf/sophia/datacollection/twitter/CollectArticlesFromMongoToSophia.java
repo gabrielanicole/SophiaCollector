@@ -32,10 +32,10 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final private MongoClient mongoClient;
 	final private MongoDatabase mongoDatabase;
 	final private MongoCollection<Document> mongoCollection;
-	final private String databaseName ="SophiaCollector";
+	final private String databaseName ="SophiaCollectorNew";
 	final private String collectionName ="Tweets";
 	final int PARAM_WAITING_TIME=120000; //2 minutos
-	final int PARAM_DOWNLOAD_AND_WAIT = 100;
+	final int PARAM_DOWNLOAD_AND_WAIT = 10;
 
 	/** Variables privadas */
 	SimpleDateFormat dateFormatWeWant = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -67,7 +67,13 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		}
 		map.put("art_date",dateWeWant);
 		map.put("art_title", article.title());
-		map.put("art_content", article.select("p").text());
+		String contenido = article.select("p").text();
+		if(contenido.length()>1){
+			map.put("art_content",contenido );
+		}else{
+			map.put("art_content","articulo no posee contenido");
+		}
+		
 		map.put("art_image_link", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/600px-No_image_available.svg.png");
 		Document entities = (Document)tweet.get("entities");
 		if (entities!=null){
@@ -116,7 +122,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 			while(true){
 				//System.out.println("Bienvenido a depurar JAVA en CollectArticlesFromMongoToSophia");
 				//Read the mongo database to find new tweets
-				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1));
+				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1)).noCursorTimeout(true);
 				//System.out.println(docCursor);
 				long numberResults=mongoCollection.count(eq("to_download", 1));
 				//System.out.println(numberResults);
@@ -189,7 +195,9 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 							}
 							catch (IOException e){
+								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 								e.printStackTrace();
+					
 							}
 						}
 						else {
