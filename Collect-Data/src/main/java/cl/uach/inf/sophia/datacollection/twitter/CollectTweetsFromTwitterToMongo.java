@@ -33,7 +33,6 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 	final String PARAM_TWITTERAPI_URL_TIMELINE = "https://api.twitter.com/1.1/statuses/home_timeline.json";
 	final String PARAM_NBRESULT="?count=200";
 	
-	int aux = 0;
 
 
 	/** Paremetros en relación con el uso de Mongo para almacenar temporalmente los tweets */
@@ -80,14 +79,7 @@ public class CollectTweetsFromTwitterToMongo extends Thread{
 		while(true)
 		{
 			JSONArray lastTweets = getLastTweets();
-			long lastTweetIdInMongo;// 
-			if(aux==0){
-				lastTweetIdInMongo = 82173045042311990L;
-				//lastTweetIdInMongo = new BigInteger("9223372036854775807")
-				aux = 1;
-			}else{
-				lastTweetIdInMongo = getLastTweetIdInMongo();
-			}
+			long lastTweetIdInMongo = getLastTweetIdInMongo();
 			int resultCount = lastTweets.length();
 			for (int i = 0; i < resultCount; i++)
 			{

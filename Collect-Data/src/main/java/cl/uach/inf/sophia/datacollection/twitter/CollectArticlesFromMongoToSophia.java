@@ -34,8 +34,8 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final private MongoCollection<Document> mongoCollection;
 	final private String databaseName ="SophiaCollectorNew";
 	final private String collectionName ="Tweets";
-	final int PARAM_WAITING_TIME=120000; //2 minutos
-	final int PARAM_DOWNLOAD_AND_WAIT = 10;
+	final int PARAM_WAITING_TIME=60000; //2 minutos
+	final int PARAM_DOWNLOAD_AND_WAIT = 50;
 
 	/** Variables privadas */
 	SimpleDateFormat dateFormatWeWant = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
