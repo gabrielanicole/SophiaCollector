@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.http.client.protocol.HttpClientContext;
 import org.bson.Document;
@@ -34,7 +35,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 	final private MongoCollection<Document> mongoCollection;
 	final private String databaseName ="SophiaCollectorNew";
 	final private String collectionName ="Tweets";
-	final int PARAM_WAITING_TIME=60000; //2 minutos
+	final int PARAM_WAITING_TIME=60000; //1 minuto
 	final int PARAM_DOWNLOAD_AND_WAIT = 50;
 
 	/** Variables privadas */
@@ -110,10 +111,25 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 
 	//Download and scrap an html page from a tweet containing an URL
 	public org.jsoup.nodes.Document downloadArticle(Document tweet) throws IOException{
-
+		
 		ArrayList<Document> urls = (ArrayList<Document>) ((Document)tweet.get("entities")).get("urls");
+		//array with user-agents
+		String[] userAgents = {"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:25.0) Gecko/20100101 Firefox/25.0",
+				"Mozilla/5.0 (compatible; ABrowse 0.4; Syllable)",
+				"Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0; Acoo Browser 1.98.744; .NET CLR 3.5.30729)",
+				"Mozilla/4.0 (compatible; MSIE 7.0; America Online Browser 1.1; Windows NT 5.1; (R1 1.5); .NET CLR 2.0.50727; InfoPath.1)",
+				"AmigaVoyager/3.2 (AmigaOS/MC680x0)",
+				"Mozilla/5.0 (compatible; MSIE 9.0; AOL 9.7; AOLBuild 4343.19; Windows NT 6.1; WOW64; Trident/5.0; FunWebProducts)",
+				"Mozilla/5.0 (X11; U; UNICOS lcLinux; en-US) Gecko/20140730 (KHTML, like Gecko, Safari/419.3) Arora/0.8.0",
+				"Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; Avant Browser; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0)",
+				"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+				"Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16",
+				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A"};
+		int index = ThreadLocalRandom.current().nextInt(0, 11);
 		//Scrap it con JSoup
-		return Jsoup.connect(urls.get(0).getString("url")).get();
+		return Jsoup.connect(urls.get(0).getString("url"))
+				.userAgent(userAgents[index]) 
+				.get();
 
 	}
 
@@ -143,6 +159,9 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								Thread.sleep(PARAM_WAITING_TIME);
 							}
 							try {
+								//sleep random time for scrapping
+								int RANDOM_WAITING_TIME = ThreadLocalRandom.current().nextInt(1000, 5000);
+								Thread.sleep(RANDOM_WAITING_TIME);
 								//This tweet contains URL, download it
 								org.jsoup.nodes.Document article=downloadArticle(tweet);
 								//Format the article to prepare the POST to SophiaAPI
@@ -177,7 +196,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 									Map<String, Object> mapPublication = formatPublication(tweet);
 									mapPublication.put("pub_article", id);
 									String idNewPublication = sophiaAPI.postPublications(mapPublication);
-
+									mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 									//Actualizamos el articulo antiguo agregando el id de la nueva publicacion
 								/*	JSONArray publicationsArray = jsonResponse.getJSONArray("art_publications");
 									Iterator<Object> publications = publicationsArray.iterator();
@@ -195,7 +214,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 							}
 							catch (IOException e){
-								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
 								e.printStackTrace();
 					
 							}
