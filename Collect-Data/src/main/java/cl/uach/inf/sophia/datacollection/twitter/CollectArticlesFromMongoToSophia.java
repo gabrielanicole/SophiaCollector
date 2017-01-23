@@ -67,6 +67,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 			e1.printStackTrace();
 		}
 		map.put("art_date",dateWeWant);
+		System.out.println(article.title());
 		map.put("art_title", article.title());
 		String contenido = article.select("p").text();
 		if(contenido.length()>1){
@@ -114,21 +115,17 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		
 		ArrayList<Document> urls = (ArrayList<Document>) ((Document)tweet.get("entities")).get("urls");
 		//array with user-agents
-		String[] userAgents = {"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:25.0) Gecko/20100101 Firefox/25.0",
-				"Mozilla/5.0 (compatible; ABrowse 0.4; Syllable)",
-				"Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0; Acoo Browser 1.98.744; .NET CLR 3.5.30729)",
-				"Mozilla/4.0 (compatible; MSIE 7.0; America Online Browser 1.1; Windows NT 5.1; (R1 1.5); .NET CLR 2.0.50727; InfoPath.1)",
+		String[] userAgents = {"Mozilla/5.0 (compatible; ABrowse 0.4; Syllable)",
 				"AmigaVoyager/3.2 (AmigaOS/MC680x0)",
-				"Mozilla/5.0 (compatible; MSIE 9.0; AOL 9.7; AOLBuild 4343.19; Windows NT 6.1; WOW64; Trident/5.0; FunWebProducts)",
-				"Mozilla/5.0 (X11; U; UNICOS lcLinux; en-US) Gecko/20140730 (KHTML, like Gecko, Safari/419.3) Arora/0.8.0",
-				"Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0; Avant Browser; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0)",
 				"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
-				"Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16",
-				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A"};
-		int index = ThreadLocalRandom.current().nextInt(0, 11);
+				"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+				"Cyberdog/2.0 (Macintosh; PPC)",
+				"Mozilla/3.0 (compatible; NetPositive/2.2.2; BeOS)"};
+		int index = ThreadLocalRandom.current().nextInt(0, 3);
+		System.out.println(userAgents[index]);
 		//Scrap it con JSoup
 		return Jsoup.connect(urls.get(0).getString("url"))
-				.userAgent(userAgents[index]) 
+				.userAgent(userAgents[5]) 
 				.get();
 
 	}
