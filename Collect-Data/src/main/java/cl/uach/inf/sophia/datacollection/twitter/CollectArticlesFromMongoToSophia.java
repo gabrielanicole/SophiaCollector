@@ -73,7 +73,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 		if(contenido.length()>1){
 			map.put("art_content",contenido );
 		}else{
-			map.put("art_content","articulo no posee contenido");
+			map.put("art_content","notContent");
 			System.out.println("notContent");
 		}
 		
@@ -172,7 +172,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 
 								if (id.equals("0")){
 									/** EL ARTICULO NO EXISTE*/
-									//enviamos el nuevo articulo
+									//enviamos el nuevo articulo si posee contenido
 									//System.out.println(mapArticle.get("art_content"));
 									String artContent = (String)mapArticle.get("art_content");
 									if(artContent.equals("notContent")){
