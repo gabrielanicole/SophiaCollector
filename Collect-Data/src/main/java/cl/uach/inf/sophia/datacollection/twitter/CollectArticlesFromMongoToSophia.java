@@ -136,7 +136,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 			while(true){
 				//System.out.println("Bienvenido a depurar JAVA en CollectArticlesFromMongoToSophia");
 				//Read the mongo database to find new tweets
-				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1)).noCursorTimeout(true);
+				FindIterable<Document> docCursor = mongoCollection.find(new BasicDBObject("to_download", 1)).limit(50);
 				//System.out.println(docCursor);
 				long numberResults=mongoCollection.count(eq("to_download", 1));
 				//System.out.println(numberResults);
