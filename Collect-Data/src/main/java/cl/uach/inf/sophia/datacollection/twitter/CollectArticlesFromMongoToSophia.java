@@ -177,6 +177,9 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 									String artContent = (String)mapArticle.get("art_content");
 									if(artContent.equals("notContent")){
 										System.out.println("article not have content");
+										Map<String, Object> mapPublication = formatPublication(tweet);
+										mapPublication.put("pub_article", "notDownload");
+										String idNewPublication = sophiaAPI.postPublications(mapPublication);
 									}else{
 										String idNewArticle = sophiaAPI.postArticles(mapArticle);
 										
@@ -185,7 +188,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 										mapPublication.put("pub_article", idNewArticle);
 										String idNewPublication = sophiaAPI.postPublications(mapPublication);
 										System.out.println(idNewArticle);
-										//mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+										mongoCollection.updateMany(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 									}
 								}
 								else {
@@ -194,14 +197,14 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 									Map<String, Object> mapPublication = formatPublication(tweet);
 									mapPublication.put("pub_article", id);
 									String idNewPublication = sophiaAPI.postPublications(mapPublication);
-									//mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+									mongoCollection.updateMany(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 								}
 
 								//Informamos a Mongo que terminamos procesar este tweet
-								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
+								mongoCollection.updateMany(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", 0)));
 							}
 							catch (IOException e){
-								mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+								mongoCollection.updateMany(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
 								Map<String, Object> mapPublication = formatPublication(tweet);
 								mapPublication.put("pub_article", "notDownload");
 								String idNewPublication = sophiaAPI.postPublications(mapPublication);
@@ -211,7 +214,7 @@ public class CollectArticlesFromMongoToSophia extends Thread{
 						}
 						else {
 							//This tweet does not contain URL, tell to Mongo that this tweet has been processed
-							mongoCollection.updateOne(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
+							mongoCollection.updateMany(new Document("id",tweet.get("id")),new Document("$set", new Document("to_download", -1)));
 							Map<String, Object> mapPublication = formatPublication(tweet);
 							mapPublication.put("pub_article", "notDownload");
 							String idNewPublication = sophiaAPI.postPublications(mapPublication);
