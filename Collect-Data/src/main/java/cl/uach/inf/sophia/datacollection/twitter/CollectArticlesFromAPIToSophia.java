@@ -188,6 +188,9 @@ public class CollectArticlesFromAPIToSophia extends Thread{
 							Map<String, Object> mapPublication = formatPublication(tweet);
 							mapPublication.put("pub_article", "notDownload");
 							String idNewPublication = sophiaAPI.postPublications(mapPublication);
+							Map<String,Object> mapCreated = new HashMap<String,Object>();
+							mapCreated.put("created_at", created_at);
+							sophiaAPI.postTweet(mapCreated);
 							e.printStackTrace();
 				
 						}
