@@ -12,8 +12,8 @@ import com.mashape.unirest.request.GetRequest;
 
 public class SophiaAPIConnector {
 
-	//final String URL_BASE_API = "http://localhost:8000/v2/";
-	final String URL_BASE_API = "http://api.sophia-project.info/v2/";
+	final String URL_BASE_API = "http://localhost:8000/v2/";
+	//final String URL_BASE_API = "http://api.sophia-project.info/v2/";
 	final String PARAM_SOPHIA_API_ARTICLES = URL_BASE_API + "articles/";
 	final String PARAM_SOPHIA_API_CHECK_ARTICLE = URL_BASE_API + "articles/exist/";
 	final String PARAM_SOPHIA_API_PUBLICATIONS = URL_BASE_API + "publications/";
@@ -57,6 +57,22 @@ public class SophiaAPIConnector {
 				.header("accept", "application/json").fields(map)
 				.asJson();
 		return jsonResponse.getStatusText();
+	}
+	
+	public JSONObject getTweet() throws UnirestException {
+		HttpResponse<JsonNode> jsonResponse=Unirest.get("http://localhost:8000/past/").asJson();
+		//HttpResponse<JsonNode> jsonResponse=Unirest.get("http://api.sophia-project.info/past/").asJson();
+		JSONObject response = jsonResponse.getBody().getObject();
+		return response;
+	}
+	
+	public void postTweet(Map<String,Object> map) throws UnirestException{
+		//HttpResponse<JsonNode> jsonResponse= Unirest.post("http://api.sophia-project.info/past/")
+		HttpResponse<JsonNode> jsonResponse= Unirest.post("http://localhost:8000/past/")
+				.header("accept", "application/json").fields(map)
+				.asJson();
+		JSONObject response = jsonResponse.getBody().getObject();
+		System.out.println(response);
 	}
 
 	public JSONObject hasExistingArticle(Map<String, Object> mapArticle) throws UnirestException {
